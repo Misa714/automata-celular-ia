@@ -148,17 +148,41 @@ Exp 4: Alta Humedad        0.5 (Sur ↓)          85% (Alta)       0.8%       Au
 * **Comportamiento:** El frente de fuego avanza con simetría radial perfecta formando círculos concéntricos desde el foco central.
 * **Tendencia:** El pico de fuego alcanza el 12.8% de la cuadrícula en la generación 14. Al consumirse el combustible interior, se forma un anillo en expansión donde el centro pasa a cenizas y luego a suelo vacío.
 
+![Evolución Temporal de la Cuadrícula - Experimento 1](graficos/evolucion_exp1_isotropo.png)
+![Curva de Dinámica de Poblaciones - Experimento 1](graficos/Exp1_Sin_Viento_Humedad_Baja_curva.png)
+
+---
+
 ### 6.2 Experimento 2: Anisotropía por Viento Fuerte hacia el Este
 * **Comportamiento:** La velocidad del frente hacia el Este se multiplica por un factor de 2.35 respecto a la propagación hacia el Oeste. El frente adquiere forma de huso/elipse alargada.
 * **Tendencia:** Mayor tasa de combustión instantánea (pico del 18.4% en la generación 10), barriendo el combustible oriental rápidamente.
+
+![Evolución Temporal de la Cuadrícula - Experimento 2](graficos/evolucion_exp2_viento_este.png)
+![Curva de Dinámica de Poblaciones - Experimento 2](graficos/Exp2_Viento_Fuerte_Este_curva.png)
+
+---
 
 ### 6.3 Experimento 3: Eficacia de Barreras Minerales (Cortafuegos)
 * **Comportamiento:** Se interpone una franja de celdas en estado 0 (Roca/Mineral) en el centro de la rejilla. El fuego avanza impulsado por viento moderado pero colisiona contra la barrera inerte.
 * **Tendencia:** Al carecer de biomasa combustible vecina ($N_{combustible} = 0$), el fuego no puede saltar la brecha de 3 celdas, limitando la pérdida de bosque al 22% del territorio total frente al 85% observado en bosques continuos.
 
+![Evolución Temporal de la Cuadrícula - Experimento 3](graficos/evolucion_exp3_cortafuegos.png)
+![Curva de Dinámica de Poblaciones - Experimento 3](graficos/Exp3_Efecto_Cortafuegos_curva.png)
+
+---
+
 ### 6.4 Experimento 4: Amortiguación por Alta Humedad y Régimen de Autoextinción
 * **Comportamiento:** Con humedad ambiental de 85%, la probabilidad efectiva de ignición decae fuertemente por debajo del umbral de percolación crítica ($p < p_c$).
 * **Tendencia:** Las cadenas de ignición se interrumpen estocásticamente, extinguiéndose por completo el incendio antes de la generación 8 sin lograr propagación masiva.
+
+![Curva de Dinámica de Poblaciones - Experimento 4](graficos/Exp4_Alta_Humedad_Contencion_curva.png)
+
+---
+
+### 6.5 Comparativa Global de Regímenes de Fuego Activo
+A continuación se compara la curva de intensidad de fuego activo entre los 4 regímenes analizados:
+
+![Comparativa de Fuego Activo entre Experimentos](graficos/comparativa_incendios_experimentos.png)
 
 ---
 
