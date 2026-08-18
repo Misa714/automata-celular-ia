@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Autómata Celular - Propagación de Incendios Forestales | IA</title>
+    <meta name="description" content="Simulador interactivo de autómata celular para modelado de propagación de incendios forestales, dinámica ecológica, viento y humedad.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- Header Principal -->
+    <header class="app-header">
+        <div class="brand-section">
+            <div class="brand-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                </svg>
+            </div>
+            <div class="brand-titles">
+                <h1>Autómata Celular: Incendios y Dinámica Ecológica</h1>
+                <p>Inteligencia Artificial • Modelado de Sistemas Complejos</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <select id="preset-select" title="Seleccionar Escenario Preconfigurado">
+                <option value="mixed_forest">🌲 Escenario: Bosque Mixto y Foco Central</option>
+                <option value="dense_forest">🔥 Escenario: Bosque Denso Altamente Combustible</option>
+                <option value="firebreak_demo">🛡️ Escenario: Efecto de Barrera Cortafuegos</option>
+                <option value="sparse_plains">🌾 Escenario: Pradera y Vegetación Dispersa</option>
+                <option value="empty">✏️ Escenario: Lienzo Vacío (Creación Libre)</option>
+            </select>
+            
+            <button id="btn-snapshot" class="btn" title="Capturar Pantalla en PNG para el Informe">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Captura
+            </button>
+
+            <button id="btn-info" class="btn btn-primary" title="Ver Reglas del Modelo">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Reglas & Info
+            </button>
+        </div>
+    </header>
+
+    <!-- Layout Principal de 3 Columnas -->
+    <main class="main-layout">
+        
+        <!-- Panel Izquierdo: Herramientas de Dibujo e Interacción -->
+        <aside class="panel panel-left">
+            
+            <!-- Herramientas de Interacción -->
+            <div class="card">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    Pincel e Interacción Directa
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Haz clic o arrastra sobre la cuadrícula para modificar celdas en tiempo real:
+                </p>
+
+                <div class="tools-grid">
+                    <button class="tool-btn active" data-state="3">
+                        <span class="state-dot fire"></span>
+                        <span>Ignición / Fuego</span>
+                    </button>
+                    <button class="tool-btn" data-state="1">
+                        <span class="state-dot grass"></span>
+                        <span>Vegetación</span>
+                    </button>
+                    <button class="tool-btn" data-state="2">
+                        <span class="state-dot forest"></span>
+                        <span>Bosque Denso</span>
+                    </button>
+                    <button class="tool-btn" data-state="0">
+                        <span class="state-dot empty"></span>
+                        <span>Cortafuego / Roca</span>
+                    </button>
+                    <button class="tool-btn" data-state="4" style="grid-column: span 2;">
+                        <span class="state-dot ash"></span>
+                        <span>Cenizas / Apagar</span>
+                    </button>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Radio del Pincel:</span>
+                    <div class="brush-sizes">
+                        <button class="brush-size-btn" data-radius="0">1x1</button>
+                        <button class="brush-size-btn active" data-radius="1">3x3</button>
+                        <button class="brush-size-btn" data-radius="2">5x5</button>
+                        <button class="brush-size-btn" data-radius="4">9x9</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parámetros de Viento (Anisotropía) -->
+            <div class="card">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    Vector de Viento
+                </div>
+
+                <div class="compass-container">
+                    <div class="compass-grid">
+                        <button class="compass-btn" data-angle="225" title="Noroeste (↖)">↖</button>
+                        <button class="compass-btn" data-angle="270" title="Norte (↑)">↑</button>
+                        <button class="compass-btn" data-angle="315" title="Noreste (↗)">↗</button>
+                        <button class="compass-btn" data-angle="180" title="Oeste (←)">←</button>
+                        <button class="compass-btn" data-angle="-1" title="Calma / Sin Viento (•)">•</button>
+                        <button class="compass-btn active" data-angle="0" title="Este (→)">→</button>
+                        <button class="compass-btn" data-angle="135" title="Suroeste (↙)">↙</button>
+                        <button class="compass-btn" data-angle="90" title="Sur (↓)">↓</button>
+                        <button class="compass-btn" data-angle="45" title="Sureste (↘)">↘</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Dirección:</span>
+                        <span id="val-wind-dir">Este (→)</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Intensidad de Viento:</span>
+                        <span id="val-wind-speed">50%</span>
+                    </div>
+                    <input type="range" id="param-wind-speed" min="0" max="100" value="50">
+                </div>
+            </div>
+
+            <!-- Parámetros Ambientales -->
+            <div class="card">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                    Factores Ambientales
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Humedad Ambiental:</span>
+                        <span id="val-humidity">20%</span>
+                    </div>
+                    <input type="range" id="param-humidity" min="0" max="95" value="20">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Tasa de Rebrote / Vegetación:</span>
+                        <span id="val-regrowth">0.5%</span>
+                    </div>
+                    <input type="range" id="param-regrowth" min="0" max="50" value="5">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Chispa Espontánea (Rayos):</span>
+                        <span id="val-lightning">0.005%</span>
+                    </div>
+                    <input type="range" id="param-lightning" min="0" max="50" value="5">
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Centro: Rejilla del Autómata y Controles de Reproducción -->
+        <section class="center-viewport">
+            
+            <div class="simulation-card">
+                <div class="canvas-wrapper">
+                    <canvas id="simulation-canvas"></canvas>
+                </div>
+
+                <!-- Barra de Botones de Reproducción -->
+                <div class="sim-controls-bar">
+                    <button id="btn-play" class="btn btn-success">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        Iniciar
+                    </button>
+                    <button id="btn-pause" class="btn active">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        Pausar
+                    </button>
+                    <button id="btn-step" class="btn">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        Paso (+1)
+                    </button>
+                    <button id="btn-reset" class="btn">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Reiniciar
+                    </button>
+                    <button id="btn-clear" class="btn btn-danger">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Limpiar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuración de Rejilla y Velocidad -->
+            <div class="card" style="width: 100%; display: flex; flex-direction: row; gap: 1.5rem; align-items: center; justify-content: space-around;">
+                <div style="flex: 1;">
+                    <div class="control-label">
+                        <span>Velocidad de Simulación:</span>
+                        <span id="val-fps">20 FPS</span>
+                    </div>
+                    <input type="range" id="param-fps" min="1" max="60" value="20">
+                </div>
+                
+                <div style="flex: 1;">
+                    <div class="control-label" style="margin-bottom: 0.3rem;">
+                        <span>Tamaño de Rejilla:</span>
+                    </div>
+                    <select id="grid-size-select">
+                        <option value="50">50 x 50 (2,500 celdas)</option>
+                        <option value="100" selected>100 x 100 (10,000 celdas)</option>
+                        <option value="150">150 x 150 (22,500 celdas)</option>
+                        <option value="200">200 x 200 (40,000 celdas)</option>
+                    </select>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Panel Derecho: Estadísticas en Vivo y Gráfico de Población -->
+        <aside class="panel panel-right">
+            
+            <!-- Estadísticas en Tiempo Real -->
+            <div class="card">
+                <div class="card-title" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        Métricas de Simulación
+                    </div>
+                    <span id="fire-status-badge" class="status-badge active-fire">
+                        <span class="pulse-dot"></span> Fuego Activo
+                    </span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box full-width">
+                        <div class="stat-header">
+                            <span>GENERACIÓN (PASO TEMPORAL)</span>
+                            <span>$t$</span>
+                        </div>
+                        <div class="stat-value" id="stat-generation">0</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-header">
+                            <span style="display:flex; align-items:center; gap:4px;"><span class="state-dot grass"></span> Vegetación</span>
+                        </div>
+                        <div class="stat-value" id="stat-grass-count">0</div>
+                        <div class="stat-sub" id="stat-grass-pct">0.0%</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-header">
+                            <span style="display:flex; align-items:center; gap:4px;"><span class="state-dot forest"></span> Bosque</span>
+                        </div>
+                        <div class="stat-value" id="stat-forest-count">0</div>
+                        <div class="stat-sub" id="stat-forest-pct">0.0%</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-header">
+                            <span style="display:flex; align-items:center; gap:4px;"><span class="state-dot fire"></span> En Fuego</span>
+                        </div>
+                        <div class="stat-value" id="stat-fire-count" style="color: #ef4444;">0</div>
+                        <div class="stat-sub" id="stat-fire-pct">0.0%</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-header">
+                            <span style="display:flex; align-items:center; gap:4px;"><span class="state-dot ash"></span> Cenizas</span>
+                        </div>
+                        <div class="stat-value" id="stat-ash-count">0</div>
+                        <div class="stat-sub" id="stat-ash-pct">0.0%</div>
+                    </div>
+
+                    <div class="stat-box full-width">
+                        <div class="stat-header">
+                            <span style="display:flex; align-items:center; gap:4px;"><span class="state-dot empty"></span> Vacío / Cortafuegos</span>
+                        </div>
+                        <div class="stat-value" id="stat-empty-count">0</div>
+                        <div class="stat-sub" id="stat-empty-pct">0.0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Evolución Temporal -->
+            <div class="card">
+                <div class="card-title" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                        Curva de Dinámica Temporal
+                    </div>
+                    <button id="btn-export-csv" class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="Descargar datos en CSV">CSV</button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="population-chart"></canvas>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.5rem; flex-wrap: wrap;">
+                    <span style="color: var(--state-grass);">— Vegetación</span>
+                    <span style="color: var(--state-forest);">— Bosque</span>
+                    <span style="color: var(--state-fire);">— Fuego</span>
+                    <span style="color: var(--state-ash);">— Ceniza</span>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- Modal de Información y Reglas Teóricas -->
+    <div id="info-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 class="modal-title">Definición Formal del Autómata Celular</h2>
+                <button id="btn-close-modal" class="btn" style="padding: 0.4rem 0.7rem;">✕</button>
+            </div>
+            <div class="modal-content">
+                <p>
+                    Un <strong>Autómata Celular (AC)</strong> es una cuádrupla formal $A = (L, S, V, \delta)$, donde $L$ representa la cuadrícula 2D, $S$ es el conjunto finito de estados, $V$ es la vecindad de Moore de 8 celdas adyacentes y $\delta$ es la función síncrona de transición local.
+                </p>
+
+                <h3>1. Espacio de Estados Finitos ($S$)</h3>
+                <table class="rules-table">
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Nombre</th>
+                            <th>Descripción Física / Biológica</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="state-dot empty"></span> 0</td>
+                            <td><strong>Vacío / Roca</strong></td>
+                            <td>Terreno inerte, barrera mineral o cortafuegos. No combustible. Permite rebrote vegetal espontáneo.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-dot grass"></span> 1</td>
+                            <td><strong>Vegetación</strong></td>
+                            <td>Pastizal y matorral joven. Alta velocidad de combustión pero menor resistencia inicial.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-dot forest"></span> 2</td>
+                            <td><strong>Bosque Maduro</strong></td>
+                            <td>Árboles y vegetación densa. Mayor biomasa, tiempo de combustión más prolongado.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-dot fire"></span> 3</td>
+                            <td><strong>Fuego Activo</strong></td>
+                            <td>Celda en combustión exotérmica activa. Emite calor a sus 8 vecinos en función del viento.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-dot ash"></span> 4</td>
+                            <td><strong>Cenizas</strong></td>
+                            <td>Residuo pos-combustión. Se enfría y descompone progresivamente hasta convertirse en terreno vacío fértil.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>2. Reglas de Transición Local ($\delta$)</h3>
+                <ul>
+                    <li><strong>Combustión por Vecindad:</strong> Una celda de vegetación o bosque calcula la probabilidad de ignición $P = 1 - \prod (1 - p_k)$, donde $p_k = p_{base} \times (1 + \vec{w} \cdot \vec{d}_k) \times (1 - H)$.</li>
+                    <li><strong>Efecto del Viento ($\vec{w}$):</strong> El producto escalar con la dirección del vecino acelera la propagación a favor del viento y la frena en contra.</li>
+                    <li><strong>Efecto de la Humedad ($H$):</strong> Amortigua linealmente la probabilidad de ignición.</li>
+                    <li><strong>Ciclo de Fuego $\rightarrow$ Ceniza $\rightarrow$ Vacío:</strong> El fuego arde durante $T_{burn}$ pasos antes de convertirse en ceniza. La ceniza perdura $T_{ash}$ pasos antes de liberar el suelo.</li>
+                    <li><strong>Regeneración Ecológica:</strong> El suelo vacío tiene probabilidad $P_{rebrote}$ de generar nueva vegetación, influenciada por la densidad de biomasa circundante.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        Inteligencia Artificial • Proyecto de Simulación de Autómatas Celulares • Implementación Matricial Síncrona (Double Buffering)
+    </footer>
+
+    <!-- Scripts de la Aplicación (ES Modules) -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
