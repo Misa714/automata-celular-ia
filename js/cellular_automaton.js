@@ -1,23 +1,27 @@
 /**
- * Cellular Automaton Engine: Wildfire and Ecological Dynamics
- * Modelo de Autómata Celular: Propagación de Incendios Forestales y Regeneración
+ * ========================================================================================
+ * MOTOR DE SIMULACIÓN DEL AUTÓMATA CELULAR (Cellular Automaton Engine)
+ * Temática: Propagación de Incendios Forestales y Dinámica Ecológica
+ * Asignatura: Inteligencia Artificial
+ * ========================================================================================
  * 
- * Estados Finitos:
- *  0: VACÍO / ROCA / CORTAFUEGOS (EMPTY)
- *  1: VEGETACIÓN / PASTIZAL (GRASS)
- *  2: BOSQUE DENSO / MADURO (FOREST)
- *  3: FUEGO / EN LLAMAS (FIRE)
- *  4: CENIZAS / TERRENO QUEMADO (ASH)
+ * Este archivo contiene la lógica matemática y matricial del autómata celular.
+ * No maneja gráficos ni botones; solo calcula cómo cambian las celdas generación tras generación.
  */
 
+// ========================================================================================
+// 1. DEFINICIÓN DE LOS 5 ESTADOS FINITOS
+// ========================================================================================
+// Cada celda de la cuadrícula almacena un número entero del 0 al 4:
 export const STATES = {
-    EMPTY: 0,
-    GRASS: 1,
-    FOREST: 2,
-    FIRE: 3,
-    ASH: 4
+    EMPTY: 0,   // Terreno Vacío / Roca / Cortafuegos mineral (no combustible)
+    GRASS: 1,   // Vegetación ligera / Pastizal (combustible rápido)
+    FOREST: 2,  // Bosque Maduro / Denso (alta biomasa, tarda más en quemarse)
+    FIRE: 3,    // Fuego Activo (en combustión, emite calor a sus 8 vecinos)
+    ASH: 4      // Cenizas / Terreno Quemado (enfriándose antes de volver a ser suelo)
 };
 
+// Nombres descriptivos para la interfaz de usuario
 export const STATE_NAMES = {
     [STATES.EMPTY]: 'Vacío / Roca',
     [STATES.GRASS]: 'Vegetación',
@@ -26,68 +30,85 @@ export const STATE_NAMES = {
     [STATES.ASH]: 'Cenizas'
 };
 
+// Códigos de color hexadecimal para la visualización
 export const STATE_COLORS = {
-    [STATES.EMPTY]: '#1e293b',   // Pizarra oscura
-    [STATES.GRASS]: '#22c55e',   // Verde esmeralda vivo
-    [STATES.FOREST]: '#15803d',  // Verde bosque profundo
+    [STATES.EMPTY]: '#1e293b',   // Pizarra oscura (mineral inerte)
+    [STATES.GRASS]: '#22c55e',   // Verde vivo (pasto/arbusto)
+    [STATES.FOREST]: '#15803d',  // Verde bosque profundo (árboles maduros)
     [STATES.FIRE]: '#ef4444',    // Rojo-naranja fuego
     [STATES.ASH]: '#64748b'      // Gris ceniza
 };
 
+// ========================================================================================
+// 2. CLASE PRINCIPAL: CellularAutomaton
+// ========================================================================================
 export class CellularAutomaton {
     constructor(width = 100, height = 100) {
-        this.width = width;
-        this.height = height;
+        this.width = width;    // Número de columnas de la cuadrícula
+        this.height = height;  // Número de filas de la cuadrícula
         
-        // Matriz de estados principal y secundaria (Double Buffering)
+        // --------------------------------------------------------------------------------
+        // ¿Por qué usamos Uint8Array? (Eficiencia de Memoria)
+        // En lugar de matrices lentas de JavaScript, usamos arreglos tipados continuos.
+        // Cada celda ocupa exactamente 1 byte (0 a 255) en memoria RAM.
+        // Para acceder a la celda (x, y), convertimos las 2 coordenadas a 1 índice lineal:
+        // índice = (y * ancho) + x
+        // --------------------------------------------------------------------------------
+
+        // TÉCNICA DE DOUBLE BUFFERING (Doble Búfer Matricial):
+        // 1. this.grid: Matriz de LECTURA (Foto del presente - Generación t)
+        // 2. this.nextGrid: Matriz de ESCRITURA (Calculando el futuro - Generación t + 1)
         this.grid = new Uint8Array(width * height);
         this.nextGrid = new Uint8Array(width * height);
         
-        // Matriz de contadores de tiempo para cuenta regresiva (Fuego y Cenizas)
+        // Temporizadores para saber cuánto tiempo lleva una celda ardiendo o en cenizas
         this.timers = new Uint8Array(width * height);
         this.nextTimers = new Uint8Array(width * height);
         
-        this.generation = 0;
-        this.history = [];
+        this.generation = 0; // Contador de pasos temporales
+        this.history = [];    // Historial para las gráficas estadísticas
         
-        // Parámetros físicos, ambientales y ecológicos
+        // --------------------------------------------------------------------------------
+        // PARÁMETROS FÍSICOS Y AMBIENTALES
+        // --------------------------------------------------------------------------------
         this.params = {
-            // Probabilidades de ignición base
-            pIgnitionGrass: 0.58,
-            pIgnitionForest: 0.42,
+            // Probabilidad base de que una celda prenda fuego si tiene un vecino ardiendo:
+            pIgnitionGrass: 0.58,   // 58% para pasto (más fácil de encender)
+            pIgnitionForest: 0.42,  // 42% para bosque (más resistente a la chispa inicial)
             
-            // Factores ambientales
-            humidity: 0.20,         // [0.0 - 1.0] Reduce probabilidad de ignición
-            windSpeed: 0.50,        // [0.0 - 1.0] Intensidad del viento
-            windAngle: 0,           // Grados: 0 = Este, 90 = Sur, 180 = Oeste, 270 = Norte
+            // Factores climáticos:
+            humidity: 0.20,         // Humedad [0.0 = Sequía total, 1.0 = Muy húmedo]
+            windSpeed: 0.50,        // Intensidad del viento [0.0 = Calma, 1.0 = Huracán]
+            windAngle: 0,           // Dirección en grados (0°=Este, 90°=Sur, 180°=Oeste, 270°=Norte)
             
-            // Dinámica de combustión y ciclo de vida (en generaciones)
-            burnDurationGrass: 1,   // Generaciones de fuego para pastizal
-            burnDurationForest: 2,  // Generaciones de fuego para bosque denso
-            ashDuration: 4,         // Generaciones que permanecen las cenizas
+            // Ciclo de vida y duración (en número de generaciones):
+            burnDurationGrass: 1,   // El pasto se consume en 1 generación
+            burnDurationForest: 2,  // El bosque denso arde durante 2 generaciones
+            ashDuration: 4,         // La ceniza tarda 4 generaciones en enfriarse y desaparecer
             
-            // Regeneración y evolución
-            pRegrowth: 0.005,       // Probabilidad de rebrote en terreno vacío
-            pForestMaturation: 0.01,// Probabilidad de que vegetación madure a bosque
-            pLightning: 0.00005,    // Chispa espontánea (rayos / sequía extrema)
+            // Dinámica ecológica:
+            pRegrowth: 0.005,       // Probabilidad de que nazca pasto en suelo vacío (0.5%)
+            pForestMaturation: 0.01,// Probabilidad de que el pasto crezca a bosque maduro (1%)
+            pLightning: 0.00005,    // Probabilidad de chispa espontánea (rayo o sequía)
             
-            // Modos de frontera
-            toroidal: false         // Bordes continuos (toroide) o fijos (absorbentes)
+            toroidal: false         // Bordes fijos (no atraviesa paredes)
         };
         
-        // Inicializar con escenario por defecto
+        // Iniciar con el bosque mixto por defecto
         this.resetGrid('mixed_forest');
     }
 
     /**
-     * Obtiene el índice lineal para coordenadas (x, y)
+     * Convierte coordenadas 2D (x, y) a un índice lineal 1D para el arreglo Uint8Array
+     * Ejemplo: en una cuadrícula de 10x10, la celda (x=3, y=2) está en el índice (2 * 10) + 3 = 23
      */
     getIndex(x, y) {
         return y * this.width + x;
     }
 
     /**
-     * Obtiene el estado en una celda
+     * Consulta segura del estado de una celda.
+     * Si las coordenadas se salen del mapa, devuelve VACÍO (0) para evitar errores.
      */
     getCell(x, y) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
@@ -102,13 +123,14 @@ export class CellularAutomaton {
     }
 
     /**
-     * Asigna un estado y configura su temporizador
+     * Asigna un estado a una celda y reinicia su temporizador
      */
     setCell(x, y, state) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
             const idx = this.getIndex(x, y);
             this.grid[idx] = state;
             
+            // Asignar el tiempo de vida correspondiente al estado
             if (state === STATES.FIRE) {
                 this.timers[idx] = this.params.burnDurationGrass;
             } else if (state === STATES.ASH) {
@@ -120,11 +142,12 @@ export class CellularAutomaton {
     }
 
     /**
-     * Aplica una herramienta en un radio determinado (Brush)
+     * Aplica el pincel circular con el mouse (para pintar fuego, árboles o cortafuegos)
      */
     applyBrush(centerX, centerY, radius, state) {
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
+                // Fórmula del círculo: dx^2 + dy^2 <= r^2
                 if (dx * dx + dy * dy <= radius * radius) {
                     const x = centerX + dx;
                     const y = centerY + dy;
@@ -137,7 +160,9 @@ export class CellularAutomaton {
     }
 
     /**
-     * Trazo continuo interpolado con algoritmo de Bresenham
+     * Algoritmo de Líneas de Bresenham:
+     * Si el usuario mueve el ratón muy rápido, une los puntos intermedios
+     * para que las líneas de cortafuegos queden continuas y sin huecos.
      */
     applyBrushLine(x0, y0, x1, y1, radius, state) {
         const dx = Math.abs(x1 - x0);
@@ -165,7 +190,7 @@ export class CellularAutomaton {
     }
 
     /**
-     * Reinicia la matriz con un patrón determinado
+     * Inicializa la cuadrícula con un escenario preconfigurado (Preset)
      */
     resetGrid(pattern = 'mixed_forest') {
         this.generation = 0;
@@ -179,34 +204,40 @@ export class CellularAutomaton {
 
         switch (pattern) {
             case 'dense_forest':
+                // 85% Bosque maduro, 15% Pasto
                 for (let i = 0; i < total; i++) {
                     this.grid[i] = Math.random() < 0.85 ? STATES.FOREST : STATES.GRASS;
                 }
+                // Foco de fuego inicial en el centro
                 this.setCell(Math.floor(this.width / 2), Math.floor(this.height / 2), STATES.FIRE);
                 break;
 
             case 'mixed_forest':
+                // 50% Pasto, 35% Bosque, 15% Vacío
                 for (let i = 0; i < total; i++) {
                     const r = Math.random();
                     if (r < 0.50) this.grid[i] = STATES.GRASS;
                     else if (r < 0.85) this.grid[i] = STATES.FOREST;
                     else this.grid[i] = STATES.EMPTY;
                 }
+                // Foco de fuego inicial en el centro
                 this.setCell(Math.floor(this.width / 2), Math.floor(this.height / 2), STATES.FIRE);
                 break;
 
             case 'firebreak_demo':
+                // Bosque con una franja cortafuegos vertical en el centro (x = width/2)
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         const idx = this.getIndex(x, y);
                         const mid = Math.floor(this.width / 2);
                         if (x >= mid - 2 && x <= mid + 2) {
-                            this.grid[idx] = STATES.EMPTY; // Barrera mineral cortafuegos
+                            this.grid[idx] = STATES.EMPTY; // Barrera mineral (cortafuegos)
                         } else {
                             this.grid[idx] = Math.random() < 0.60 ? STATES.GRASS : STATES.FOREST;
                         }
                     }
                 }
+                // Fuego iniciado en el flanco izquierdo
                 const midY = Math.floor(this.height / 2);
                 for (let dy = -3; dy <= 3; dy++) {
                     this.setCell(Math.floor(this.width / 6), midY + dy, STATES.FIRE);
@@ -214,6 +245,7 @@ export class CellularAutomaton {
                 break;
 
             case 'sparse_plains':
+                // Pradera dispersa
                 for (let i = 0; i < total; i++) {
                     const r = Math.random();
                     if (r < 0.40) this.grid[i] = STATES.GRASS;
@@ -233,7 +265,7 @@ export class CellularAutomaton {
     }
 
     /**
-     * Calcula el vector de viento normalizado
+     * Calcula el vector de viento (dx, dy) usando trigonometría a partir del ángulo y velocidad
      */
     getWindVector() {
         const rad = (this.params.windAngle * Math.PI) / 180;
@@ -243,9 +275,10 @@ export class CellularAutomaton {
         };
     }
 
-    /**
-     * Avanza una generación aplicando las reglas de transición síncronas
-     */
+    // ====================================================================================
+    // 3. EL CORAZÓN DEL AUTÓMATA: MÉTODO step()
+    // Aplica las reglas locales de transición simultáneamente a todas las celdas
+    // ====================================================================================
     step() {
         const wind = this.getWindVector();
         const {
@@ -260,7 +293,7 @@ export class CellularAutomaton {
             pLightning
         } = this.params;
 
-        // Vecindad de Moore (8 vecinos)
+        // VECINDAD DE MOORE (Las 8 celdas adyacentes: horizontales, verticales y diagonales)
         const neighbors = [
             { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 },
             { dx: -1, dy:  0 },                    { dx: 1, dy:  0 },
@@ -270,42 +303,55 @@ export class CellularAutomaton {
         const w = this.width;
         const h = this.height;
 
+        // Recorremos la cuadrícula celda por celda:
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
                 const idx = this.getIndex(x, y);
-                const currentState = this.grid[idx];
+                const currentState = this.grid[idx]; // Estado actual en generación t
                 const timer = this.timers[idx];
 
                 let nextState = currentState;
                 let nextTimer = timer;
 
                 switch (currentState) {
+
+                    // --------------------------------------------------------------------
+                    // CASO A: LA CELDA ESTÁ ARDIENDO (ESTADO 3: FIRE)
+                    // --------------------------------------------------------------------
                     case STATES.FIRE: {
-                        // Cuenta regresiva de combustión
+                        // Si aún le queda tiempo de combustión, sigue ardiendo
                         if (timer > 1) {
                             nextState = STATES.FIRE;
                             nextTimer = timer - 1;
                         } else {
+                            // Cuando se le acaba el combustible, se convierte en CENIZAS
                             nextState = STATES.ASH;
-                            nextTimer = ashDuration;
+                            nextTimer = ashDuration; // Comienza cuenta regresiva de enfriamiento
                         }
                         break;
                     }
 
+                    // --------------------------------------------------------------------
+                    // CASO B: LA CELDA ES CENIZA (ESTADO 4: ASH)
+                    // --------------------------------------------------------------------
                     case STATES.ASH: {
-                        // Cuenta regresiva de enfriamiento y degradación de cenizas
+                        // Las cenizas se van enfriando poco a poco
                         if (timer > 1) {
                             nextState = STATES.ASH;
                             nextTimer = timer - 1;
                         } else {
+                            // Cuando se enfrían por completo, el suelo queda VACÍO y fértil
                             nextState = STATES.EMPTY;
                             nextTimer = 0;
                         }
                         break;
                     }
 
+                    // --------------------------------------------------------------------
+                    // CASO C: TERRENO VACÍO (ESTADO 0: EMPTY)
+                    // --------------------------------------------------------------------
                     case STATES.EMPTY: {
-                        // Terreno vacío: posibilidad de rebrote vegetal influenciado por biomasa vecina
+                        // Contamos cuántas plantas o árboles hay alrededor para simular semillas
                         let seedNeighbors = 0;
                         for (let n of neighbors) {
                             const nx = x + n.dx;
@@ -316,14 +362,19 @@ export class CellularAutomaton {
                             }
                         }
 
+                        // Probabilidad de que rebrote vegetación:
+                        // P_rebrote_efectivo = P_base + (vecinos_con_vegetacion * bono_semilla)
                         const effectiveRegrowth = pRegrowth + (seedNeighbors * 0.002);
                         if (Math.random() < effectiveRegrowth) {
-                            nextState = STATES.GRASS;
+                            nextState = STATES.GRASS; // Nace pasto nuevo
                             nextTimer = 0;
                         }
                         break;
                     }
 
+                    // --------------------------------------------------------------------
+                    // CASO D: CELDA VIVA (ESTADO 1: GRASS ó ESTADO 2: FOREST)
+                    // --------------------------------------------------------------------
                     case STATES.GRASS:
                     case STATES.FOREST: {
                         const isForest = (currentState === STATES.FOREST);
@@ -332,6 +383,7 @@ export class CellularAutomaton {
                         let fireNeighbors = 0;
                         let windFactorSum = 0;
 
+                        // Revisamos los 8 vecinos de Moore para ver si alguno está en fuego:
                         for (let n of neighbors) {
                             const nx = x + n.dx;
                             const ny = y + n.dy;
@@ -340,15 +392,17 @@ export class CellularAutomaton {
                             if (neighborState === STATES.FIRE) {
                                 fireNeighbors++;
 
-                                // Vector de propagación de calor: desde el vecino hacia la celda evaluada
+                                // Vector de dirección: desde el vecino ardiendo hacia mi celda
                                 const propX = -n.dx;
                                 const propY = -n.dy;
                                 const norm = Math.hypot(propX, propY);
 
-                                // Producto escalar con el vector de viento
+                                // PRODUCTO PUNTO (Álgebra vectorial con el viento):
+                                // dot = (dirección_calor) • (dirección_viento)
                                 const dot = (propX / norm) * wind.x + (propY / norm) * wind.y;
                                 
-                                // Ponderación de viento acotada
+                                // Si el viento empuja el fuego hacia mí: multiplicador > 1.0 (se acelera)
+                                // Si el viento aleja el fuego: multiplicador < 1.0 (se frena)
                                 const windMultiplier = Math.max(0.1, 1.0 + dot * 1.5);
                                 windFactorSum += windMultiplier;
                             }
@@ -356,15 +410,17 @@ export class CellularAutomaton {
 
                         let ignites = false;
 
+                        // Si hay vecinos ardiendo, calculamos la probabilidad acumulada:
                         if (fireNeighbors > 0) {
                             const avgWindFactor = windFactorSum / fireNeighbors;
                             
-                            // Probabilidad de ignición por vecino ajustada con humedad
+                            // Probabilidad por vecino ajustada con el viento y amortiguada por la humedad:
                             const pPerNeighbor = Math.min(0.98, Math.max(0.01, 
                                 baseProb * avgWindFactor * (1.0 - humidity * 0.75)
                             ));
 
-                            // Probabilidad acumulada: P = 1 - (1 - p)^k
+                            // FÓRMULA DE PROBABILIDAD ACUMULADA:
+                            // P_total = 1 - (1 - p)^k (probabilidad de que al menos 1 vecino me prenda fuego)
                             const pCatchFire = 1.0 - Math.pow(1.0 - pPerNeighbor, fireNeighbors);
 
                             if (Math.random() < pCatchFire) {
@@ -372,7 +428,7 @@ export class CellularAutomaton {
                             }
                         }
 
-                        // Chispa espontánea (rayo o sequía severa)
+                        // Chispa espontánea (rayo o sequía severa, independiente de vecinos)
                         if (!ignites && pLightning > 0) {
                             const effectiveLightning = pLightning * (1.0 - humidity * 0.9);
                             if (Math.random() < effectiveLightning) {
@@ -381,11 +437,12 @@ export class CellularAutomaton {
                         }
 
                         if (ignites) {
+                            // ¡LA CELDA SE PRENDE FUEGO!
                             nextState = STATES.FIRE;
-                            // El bosque denso arde por más generaciones que el pastizal
+                            // El bosque denso arde por más generaciones (2) que el pastizal (1)
                             nextTimer = isForest ? burnDurationForest : burnDurationGrass;
                         } else {
-                            // Maduración de vegetación a bosque maduro
+                            // Si no se quema y es pasto, tiene una pequeña probabilidad de madurar a bosque denso:
                             if (!isForest && Math.random() < pForestMaturation) {
                                 nextState = STATES.FOREST;
                                 nextTimer = 0;
@@ -395,12 +452,17 @@ export class CellularAutomaton {
                     }
                 }
 
+                // Guardamos el nuevo estado en la matriz del futuro (nextGrid)
                 this.nextGrid[idx] = nextState;
                 this.nextTimers[idx] = nextTimer;
             }
         }
 
-        // Intercambio de buffers (Double Buffering)
+        // --------------------------------------------------------------------------------
+        // PASO FINAL: INTERCAMBIO DE BÚFERES (DOUBLE BUFFERING)
+        // El futuro calculado pasa a ser el presente de la siguiente generación.
+        // Tiempo de ejecución: O(1) instantáneo (solo se cambian los punteros de memoria).
+        // --------------------------------------------------------------------------------
         const tempGrid = this.grid;
         this.grid = this.nextGrid;
         this.nextGrid = tempGrid;
@@ -409,12 +471,12 @@ export class CellularAutomaton {
         this.timers = this.nextTimers;
         this.nextTimers = tempTimers;
 
-        this.generation++;
-        this.recordStats();
+        this.generation++; // Avanzamos 1 generación
+        this.recordStats(); // Actualizamos las estadísticas
     }
 
     /**
-     * Registra las estadísticas de la generación actual
+     * Cuenta cuántas celdas hay de cada estado para actualizar los contadores y las gráficas
      */
     recordStats() {
         const counts = {
@@ -446,14 +508,14 @@ export class CellularAutomaton {
 
         this.history.push(stats);
         if (this.history.length > 500) {
-            this.history.shift();
+            this.history.shift(); // Mantener un máximo de 500 puntos para no saturar memoria
         }
 
         return stats;
     }
 
     /**
-     * Obtiene las estadísticas más recientes
+     * Obtiene el último registro de estadísticas
      */
     getLatestStats() {
         if (this.history.length === 0) {
@@ -463,7 +525,7 @@ export class CellularAutomaton {
     }
 
     /**
-     * Redimensiona la cuadrícula
+     * Redimensiona la cuadrícula de forma segura
      */
     resize(newWidth, newHeight) {
         this.width = newWidth;
