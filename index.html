@@ -1,44 +1,75 @@
+<!-- Declaración del tipo de documento estándar HTML5 -->
 <!DOCTYPE html>
+<!-- Etiqueta raíz del documento HTML configurada en idioma español -->
 <html lang="es">
 <head>
+    <!-- Configuración de codificación de caracteres UTF-8 para admitir acentos y caracteres especiales -->
     <meta charset="UTF-8">
+    <!-- Metaetiqueta de viewport para garantizar un diseño responsivo en móviles, tablets y PC -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Título descriptivo de la página que se muestra en la pestaña del navegador -->
     <title>Autómata Celular: Propagación de Incendios | Inteligencia Artificial</title>
+    <!-- Preconexión al servidor de Google Fonts para acelerar la descarga de tipografías -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Preconexión con credenciales CORS cruzadas para recursos estáticos de fuentes -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Importación de las fuentes tipográficas 'Inter' (interfaz) y 'JetBrains Mono' (cifras numéricas) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Enlace a la hoja de estilos CSS externa que contiene el diseño visual del proyecto -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Encabezado superior de la aplicación web -->
     <header class="app-header">
         <div class="header-content">
+            <!-- Título principal del proyecto académico -->
             <h1>Autómata Celular: Propagación de Incendios Forestales</h1>
+            <!-- Subtítulo que especifica el marco conceptual y el tipo de vecindad utilizado -->
             <p>Asignatura: Inteligencia Artificial - Modelo 2D con Vecindad de Moore</p>
         </div>
     </header>
+
+    <!-- Contenedor principal del simulador con disposición de 3 columnas (Panel Izq, Canvas, Panel Der) -->
     <main class="contenedor-principal">
+        
+        <!-- Panel Izquierdo: Controles de ejecución, selección de pincel y parámetros del modelo -->
         <aside class="panel">
+            
+            <!-- Tarjeta 1: Botones de control de la simulación -->
             <div class="tarjeta">
                 <h2>Controles de Simulación</h2>
                 <div class="botones-principales">
+                    <!-- Botón para iniciar el ciclo continuo de evolución temporal -->
                     <button id="btn-iniciar" class="btn btn-verde">Iniciar</button>
+                    <!-- Botón para pausar o detener temporalmente la simulación -->
                     <button id="btn-pausar" class="btn activo">Pausar</button>
+                    <!-- Botón para avanzar exactamente una sola generación (ejecución paso a paso) -->
                     <button id="btn-paso" class="btn">Paso (+1)</button>
+                    <!-- Botón para regenerar el mapa con un nuevo bosque aleatorio y fuego central -->
                     <button id="btn-reiniciar" class="btn">Reiniciar</button>
+                    <!-- Botón para limpiar toda la cuadrícula y dejarla en estado vacío -->
                     <button id="btn-limpiar" class="btn btn-rojo">Limpiar</button>
                 </div>
             </div>
+
+            <!-- Tarjeta 2: Pincel interactivo para pintar estados sobre el lienzo -->
             <div class="tarjeta">
                 <h2>Modificar Celda (Pincel)</h2>
                 <p class="subtexto">Selecciona una opción y haz clic en el mapa:</p>
                 <div class="grupo-pinceles">
+                    <!-- Opción de pincel para encender fuego (Estado 2) -->
                     <button class="btn-pincel activo" data-estado="2"><span class="punto-color fuego"></span> Fuego Activo</button>
+                    <!-- Opción de pincel para plantar árboles (Estado 1) -->
                     <button class="btn-pincel" data-estado="1"><span class="punto-color arbol"></span> Bosque / Árbol</button>
+                    <!-- Opción de pincel para crear suelo vacío o cortafuegos (Estado 0) -->
                     <button class="btn-pincel" data-estado="0"><span class="punto-color vacio"></span> Suelo Vacío</button>
                 </div>
             </div>
+
+            <!-- Tarjeta 3: Configuración de parámetros matemáticos del autómata -->
             <div class="tarjeta">
                 <h2>Parámetros del Modelo</h2>
+                <!-- Selector del tamaño de la cuadrícula NxN -->
                 <div class="control-fila">
                     <label for="sel-tamano">Tamaño de Rejilla:</label>
                     <select id="sel-tamano">
@@ -47,35 +78,48 @@
                         <option value="80">80 x 80 (6400 celdas)</option>
                     </select>
                 </div>
+                <!-- Control deslizante para la probabilidad de propagación del fuego -->
                 <div class="control-fila">
                     <div class="etiqueta-valor"><span>Probabilidad de Fuego:</span><strong id="lbl-propagacion">70%</strong></div>
                     <input type="range" id="sld-propagacion" min="10" max="100" value="70">
                 </div>
+                <!-- Control deslizante para la densidad inicial de bosque -->
                 <div class="control-fila">
                     <div class="etiqueta-valor"><span>Densidad Inicial:</span><strong id="lbl-densidad">65%</strong></div>
                     <input type="range" id="sld-densidad" min="10" max="100" value="65">
                 </div>
+                <!-- Control deslizante para la velocidad de animación (FPS / Generaciones por segundo) -->
                 <div class="control-fila">
                     <div class="etiqueta-valor"><span>Velocidad:</span><strong id="lbl-fps">15 FPS</strong></div>
                     <input type="range" id="sld-fps" min="1" max="40" value="15">
                 </div>
             </div>
         </aside>
+
+        <!-- Columna Central: Contenedor del Lienzo HTML5 Canvas donde se dibuja la matriz -->
         <section class="seccion-central">
             <div class="canvas-contenedor">
+                <!-- Elemento Canvas con resolución nativa de 500x500 píxeles para renderizado 2D -->
                 <canvas id="canvas-simulacion" width="500" height="500"></canvas>
             </div>
         </section>
+
+        <!-- Panel Derecho: Estadísticas en tiempo real y resumen de reglas teóricas -->
         <aside class="panel">
+            
+            <!-- Tarjeta 1: Métricas cuantitativas en vivo -->
             <div class="tarjeta">
                 <div class="cabecera-estadisticas">
                     <h2>Métricas en Vivo</h2>
+                    <!-- Badge dinámico que muestra si el fuego sigue activo o ya se extinguió -->
                     <span id="badge-estado" class="badge-estado">FUEGO ACTIVO</span>
                 </div>
+                <!-- Indicador numérico de la generación o paso temporal actual -->
                 <div class="caja-metrica generacion">
                     <span>GENERACION:</span>
                     <span id="txt-gen" class="numero-grande">0</span>
                 </div>
+                <!-- Desglose de conteo y porcentaje para cada uno de los 4 estados finitos -->
                 <div class="grid-metricas">
                     <div class="caja-metrica"><span class="nombre-estado"><span class="punto-color arbol"></span> Árboles Vivos:</span><strong id="cnt-arboles">0 (0.0%)</strong></div>
                     <div class="caja-metrica"><span class="nombre-estado"><span class="punto-color fuego"></span> En Fuego:</span><strong id="cnt-fuego" style="color: #ef4444;">0 (0.0%)</strong></div>
@@ -83,6 +127,8 @@
                     <div class="caja-metrica"><span class="nombre-estado"><span class="punto-color vacio"></span> Suelo Vacío:</span><strong id="cnt-vacio">0 (0.0%)</strong></div>
                 </div>
             </div>
+
+            <!-- Tarjeta 2: Resumen formal de las 4 reglas de transición local -->
             <div class="tarjeta">
                 <h2>Reglas de Transición</h2>
                 <ul class="lista-reglas">
@@ -94,6 +140,8 @@
             </div>
         </aside>
     </main>
+
+    <!-- Inclusión del script JavaScript que ejecuta toda la lógica del autómata celular -->
     <script src="js/app.js"></script>
 </body>
 </html>
