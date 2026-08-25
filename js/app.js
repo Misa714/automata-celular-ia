@@ -14,7 +14,7 @@ const COLORES = ['#18181b', '#22c55e', '#ef4444', '#71717a'];
 
 // 2. VARIABLES GLOBALES DE ESTADO Y PARÁMETROS MATEMÁTICOS
 let N = 50;                  // Dimensión de la cuadrícula cuadrada (NxN celdas)
-let matriz = [];             // Matriz bidimensional principal que almacena el estado actual
+let matriz = [];             // MATRIZ 1 (PRESENTE 't'): Almacena el estado actual que se muestra en pantalla
 let gen = 0;                 // Contador de pasos de tiempo o generaciones transcurridas
 let pProp = 0.7;             // Probabilidad de propagación del fuego a un árbol adyacente (70%)
 let dens = 0.65;             // Densidad inicial de árboles en la cuadrícula (65%)
@@ -48,7 +48,7 @@ const inicializar = () => {
 const limpiar = () => { gen = 0; matriz = crearMatriz(N); dibujar(); actualizarMetricas(); };
 
 // 4. CÁLCULO DE LA VECINDAD DE MOORE (8 CELDAS ADYACENTES)
-// Cuenta cuántos vecinos en llamas (FUEGO = 2) rodean a la celda en la posición (f, c)
+// Cuenta cuántos vecinos en llamas (FUEGO = 2) rodean a la celda en la posición (f, c) en la MATRIZ 1
 const contarVecinosFuego = (f, c) => {
     let fuegos = 0;
     // Itera en desplazamientos verticales (-1, 0, +1) y horizontales (-1, 0, +1)
@@ -62,19 +62,45 @@ const contarVecinosFuego = (f, c) => {
 };
 
 // 5. FUNCIÓN DE TRANSICIÓN SÍNCRONA CON DOBLE BÚFER (DOUBLE BUFFERING)
-// Calcula la generación t+1 aplicando las 4 reglas locales del autómata celular
+// Calcula la generación t+1 usando DOS matrices: lee de 'matriz' y escribe en 'nuevaMatriz'
 const siguientePaso = () => {
-    // Transforma sincrónicamente cada celda produciendo una nueva matriz sin modificar la anterior durante el cálculo
-    matriz = matriz.map((row, f) => row.map((cell, c) => {
-        if (cell === FUEGO) return CENIZA; // Regla 1: Fuego se extingue a Ceniza en 1 turno
-        if (cell === CENIZA) return VACIO; // Regla 2: Ceniza se enfría y pasa a suelo Vacío en 1 turno
-        // Regla 3: Árbol con vecinos ardiendo se contagia según la probabilidad de propagación
-        if (cell === ARBOL) return (contarVecinosFuego(f, c) > 0 && Math.random() < pProp) ? FUEGO : ARBOL;
-        // Regla 4: Suelo libre tiene una probabilidad baja de rebrote espontáneo
-        return Math.random() < pReb ? ARBOL : VACIO;
-    }));
+    // ----------------------------------------------------------------------------------
+    // MATRIZ 2 (FUTURO 't+1'): Creamos explícitamente una segunda matriz auxiliar vacía
+    // ----------------------------------------------------------------------------------
+    let nuevaMatriz = crearMatriz(N);
+
+    // Recorremos la cuadrícula completa evaluando cada celda
+    for (let f = 0; f < N; f++) {
+        for (let c = 0; c < N; c++) {
+            let actual = matriz[f][c]; // LEEMOS de la MATRIZ 1 (Estado en tiempo t)
+
+            // Regla 1: Fuego se extingue a Ceniza en 1 turno -> ESCRIBIMOS en MATRIZ 2
+            if (actual === FUEGO) {
+                nuevaMatriz[f][c] = CENIZA;
+            }
+            // Regla 2: Ceniza se enfría y pasa a suelo Vacío en 1 turno -> ESCRIBIMOS en MATRIZ 2
+            else if (actual === CENIZA) {
+                nuevaMatriz[f][c] = VACIO;
+            }
+            // Regla 3: Árbol vivo -> Consulta vecinos en MATRIZ 1 y contagia en MATRIZ 2
+            else if (actual === ARBOL) {
+                let vecinos = contarVecinosFuego(f, c);
+                nuevaMatriz[f][c] = (vecinos > 0 && Math.random() < pProp) ? FUEGO : ARBOL;
+            }
+            // Regla 4: Suelo libre tiene probabilidad de rebrote -> ESCRIBIMOS en MATRIZ 2
+            else {
+                nuevaMatriz[f][c] = (Math.random() < pReb) ? ARBOL : VACIO;
+            }
+        }
+    }
+
+    // ----------------------------------------------------------------------------------
+    // DOBLE BÚFER: La MATRIZ 2 (nuevaMatriz) calculada reemplaza a la MATRIZ 1 (matriz)
+    // ----------------------------------------------------------------------------------
+    matriz = nuevaMatriz;
+
     gen++;                // Incrementa el contador de generaciones
-    dibujar();            // Redibuja el lienzo gráfico
+    dibujar();            // Redibuja el lienzo gráfico con la nueva matriz
     actualizarMetricas(); // Refresca las estadísticas en pantalla
 };
 
